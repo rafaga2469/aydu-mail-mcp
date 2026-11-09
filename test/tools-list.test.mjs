@@ -11,96 +11,37 @@
 
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { spawn } from "node:child_process"
-import { fileURLToPath } from "node:url"
-import { dirname, join } from "node:path"
-
-const SERVER = join(dirname(fileURLToPath(import.meta.url)), "..", "src", "server.mjs")
-
-/** Start the server with exactly this environment and return its tool list. */
-async function listTools(env) {
-  // A fresh environment: an ambient AYDU_* variable must never change the result.
-  const child = spawn(process.execPath, [SERVER], {
-    env: { PATH: process.env.PATH ?? "", ...env },
-    stdio: ["pipe", "pipe", "pipe"],
-  })
-
-  let buffer = ""
-  let stderr = ""
-
-  const done = new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      child.kill()
-      reject(new Error(`tools/list timed out. stderr: ${stderr}`))
-    }, 10000)
-
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString()
-    })
-
-    child.stdout.on("data", (chunk) => {
-      buffer += chunk.toString()
-      let newline
-      while ((newline = buffer.indexOf("\n")) !== -1) {
-        const line = buffer.slice(0, newline).trim()
-        buffer = buffer.slice(newline + 1)
-        if (line.length === 0) continue
-        let message
-        try {
-          message = JSON.parse(line)
-        } catch {
-          // Not a protocol message on stdout; nothing to do with the tool list.
-          continue
-        }
-        if (message.id === 2) {
-          clearTimeout(timer)
-          resolve(message.result?.tools ?? [])
-        }
-      }
-    })
-
-    child.on("exit", (code) => {
-      clearTimeout(timer)
-      reject(new Error(`server exited with ${code} before answering. stderr: ${stderr}`))
-    })
-  })
-
-  const send = (message) => child.stdin.write(`${JSON.stringify(message)}\n`)
-  send({
-    jsonrpc: "2.0",
-    id: 1,
-    method: "initialize",
-    params: {
-      protocolVersion: "2024-11-05",
-      capabilities: {},
-      clientInfo: { name: "aydu-mail-mcp-tests", version: "1.0.0" },
-    },
-  })
-  send({ jsonrpc: "2.0", method: "notifications/initialized" })
-  send({ jsonrpc: "2.0", id: 2, method: "tools/list" })
-
-  try {
-    return await done
-  } finally {
-    child.kill()
-  }
-}
+import { listTools } from "./mcp-client.mjs"
 
 const names = (tools) => tools.map((tool) => tool.name).sort()
+
 const inputProps = (tools, name) => {
   const tool = tools.find((candidate) => candidate.name === name)
   assert.ok(tool, `${name} must be registered`)
   return Object.keys(tool.inputSchema?.properties ?? {}).sort()
 }
 
-test("ships drafting and connection checks without exposing sending", async () => {
+// Registered in every environment: reading is not a destructive capability.
+const READ_TOOLS = ["get_message", "list_mailboxes", "list_messages", "search_messages"]
+
+test("ships drafting, reading and connection checks without exposing sending", async () => {
   const tools = await listTools({})
-  assert.deepEqual(names(tools), ["check_connection", "save_draft"])
+  assert.deepEqual(names(tools), [...READ_TOOLS, "check_connection", "save_draft"].sort())
+})
+
+test("read tools never depend on an opt-in variable", async () => {
+  const tools = await listTools({ AYDU_MAIL_ALLOW_SEND: "false", AYDU_MAIL_SIGNATURES_DIR: "" })
+  for (const tool of READ_TOOLS) {
+    assert.ok(names(tools).includes(tool), `${tool} must always be registered`)
+  }
 })
 
 test("send_email appears only when sending is enabled", async () => {
   const tools = await listTools({ AYDU_MAIL_ALLOW_SEND: "true" })
-  assert.deepEqual(names(tools), ["check_connection", "save_draft", "send_email"])
+  assert.deepEqual(
+    names(tools),
+    [...READ_TOOLS, "check_connection", "save_draft", "send_email"].sort(),
+  )
 })
 
 test("signature selection is absent until a signature directory is configured", async () => {
@@ -110,7 +51,10 @@ test("signature selection is absent until a signature directory is configured", 
 
 test("configuring signatures exposes the tool and the schema field", async () => {
   const tools = await listTools({ AYDU_MAIL_SIGNATURES_DIR: "/tmp/aydu-signatures" })
-  assert.deepEqual(names(tools), ["check_connection", "list_signatures", "save_draft"])
+  assert.deepEqual(
+    names(tools),
+    [...READ_TOOLS, "check_connection", "list_signatures", "save_draft"].sort(),
+  )
   assert.deepEqual(inputProps(tools, "save_draft"), [
     "cc",
     "html",
@@ -126,12 +70,10 @@ test("sending and signatures can be enabled at the same time", async () => {
     AYDU_MAIL_ALLOW_SEND: "1",
     AYDU_MAIL_SIGNATURES_DIR: "/tmp/aydu-signatures",
   })
-  assert.deepEqual(names(tools), [
-    "check_connection",
-    "list_signatures",
-    "save_draft",
-    "send_email",
-  ])
+  assert.deepEqual(
+    names(tools),
+    [...READ_TOOLS, "check_connection", "list_signatures", "save_draft", "send_email"].sort(),
+  )
   assert.deepEqual(inputProps(tools, "send_email"), [
     "cc",
     "html",
@@ -139,5 +81,23 @@ test("sending and signatures can be enabled at the same time", async () => {
     "subject",
     "text",
     "to",
+  ])
+})
+
+test("read tools expose no argument that could write", async () => {
+  const tools = await listTools({})
+  assert.deepEqual(inputProps(tools, "list_mailboxes"), [])
+  assert.deepEqual(inputProps(tools, "list_messages"), ["beforeUid", "limit", "mailbox"])
+  assert.deepEqual(inputProps(tools, "get_message"), ["format", "mailbox", "uid"])
+  assert.deepEqual(inputProps(tools, "search_messages"), [
+    "before",
+    "from",
+    "limit",
+    "mailbox",
+    "since",
+    "subject",
+    "text",
+    "to",
+    "unseen",
   ])
 })
