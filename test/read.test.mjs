@@ -138,6 +138,28 @@ test("ignores a text part that is itself an attachment", () => {
   assert.equal(findBodyPart({ type: "text/plain", part: "1" }, "html"), undefined)
 })
 
+test("never picks a text part that carries a Content-Type filename", () => {
+  const structure = {
+    type: "multipart/mixed",
+    childNodes: [
+      { part: "1", type: "text/plain", parameters: { name: "notas.txt" } },
+      { part: "2", type: "text/plain" },
+    ],
+  }
+  assert.equal(findBodyPart(structure, "text"), "2")
+  assert.equal(hasAttachments(structure), true)
+})
+
+test("never picks a lone text part carrying a disposition filename", () => {
+  const structure = {
+    part: "1",
+    type: "text/plain",
+    dispositionParameters: { filename: "notas.txt" },
+  }
+  assert.equal(findBodyPart(structure, "text"), undefined)
+  assert.equal(hasAttachments(structure), true)
+})
+
 test("uses the TEXT part name for a single-part message", () => {
   assert.equal(findBodyPart({ type: "text/plain" }, "text"), "TEXT")
 })

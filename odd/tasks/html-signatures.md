@@ -7,7 +7,7 @@ Branch: `feat/signatures-and-read-tools`.
 
 **S1** — The signature directory comes from `AYDU_MAIL_SIGNATURES_DIR`. When it is unset the capability is absent, not guarded: `list_signatures` is never registered, and no tool schema contains a `signature` field.
 
-**S2** — Each signature is a file `<name>.html` inside that directory. `<name>` must match `^[A-Za-z0-9][A-Za-z0-9._-]*$`. A name containing `/`, `\`, or `..`, or whose resolved real path escapes the directory (symlink included), is rejected. No signature file is ever written by this server.
+**S2** — Each signature is a file `<name>.html` inside that directory. `<name>` must match `^[A-Za-z0-9][A-Za-z0-9._-]*$`. A name containing `/`, `\`, or `..`, or whose resolved real path escapes the directory (symlink included), is rejected. No signature file is ever written by this server. Only an omitted name means "no signature": an explicit empty or whitespace-only name is rejected with `Invalid signature name: an empty value is not a signature name; omit the argument to use the default`, so a caller cannot silently bypass `AYDU_MAIL_DEFAULT_SIGNATURE`.
 
 **S3** — `list_signatures` returns, for each signature, `name`, `bytes`, and `hasTextVersion`. It never returns the HTML body.
 
@@ -44,3 +44,5 @@ Branch: `feat/signatures-and-read-tools`.
 - Absence of `AYDU_MAIL_SIGNATURES_DIR` removes the capability instead of failing calls, matching the existing `AYDU_MAIL_ALLOW_SEND` boundary.
 
 **L4** — Delivery slices: commit `0bdfb74` holds `src/signatures.mjs`, `src/config.mjs` and their tests; commit `e9fca48` holds the `server.mjs` wiring and the stdio boundary test; the documentation commit closes the feature. Review them in that order.
+
+**L5** — Review correction (findings `R1-empty-signature`, `R3-001`): `applySignature` treated an explicit empty name as "no signature", which let a caller bypass `AYDU_MAIL_DEFAULT_SIGNATURE` and still report success with `signature: null`. Only omission now means no signature; an empty or whitespace-only name is rejected. S2 was rewritten to state the rule.

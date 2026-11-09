@@ -11,7 +11,7 @@ Branch: `feat/signatures-and-read-tools`.
 
 **S3** — `limit` defaults to 20 and is capped at 50. Results are newest first. `beforeUid` pages to older messages: only UIDs strictly lower than the given value are returned, so the oldest uid of a page is the cursor for the next one.
 
-**S4** — `get_message` returns one message with `format` of `headers` (default), `text`, or `html`, plus `cc`, `replyTo`, and `inReplyTo`. A body longer than 100000 bytes is cut and reported with `truncated: true`. A requested part that the message does not have is an error naming the missing type.
+**S4** — `get_message` returns one message with `format` of `headers` (default), `text`, or `html`, plus `cc`, `replyTo`, and `inReplyTo`. A body longer than 100000 bytes is cut and reported with `truncated: true`. A requested part that the message does not have is an error naming the missing type. A part that counts as an attachment — disposition `attachment`, or a filename in either the disposition or the Content-Type parameters — is never returned as the body.
 
 **S5** — `search_messages` maps `from`, `to`, `subject`, `since`, `before`, `unseen`, and `text` to an IMAP SEARCH. A call with no criterion is rejected with `search_messages requires at least one criterion`.
 
@@ -43,3 +43,5 @@ Branch: `feat/signatures-and-read-tools`.
 **L3** — Delivery slices: commit `src/read.mjs` with `test/read.test.mjs` first, then the `server.mjs` wiring with `test/mcp-client.mjs`, `test/tools-list.test.mjs` and `test/read-tools.test.mjs`, then documentation.
 
 **L4** — The IMAP wiring is exercised only on paths that provably cannot reach a server (validation, missing credentials, refused connection), because CI has no mail server. Everything that shapes output is covered by `test/read.test.mjs` without a network. This is a deliberate limit, not an oversight: adding a fake IMAP server would test the fake, not the server.
+
+**L5** — Review correction (finding `R3-002`): `findBodyPart` only rejected the exact `attachment` disposition, so a `text/plain` part carrying a filename in `parameters.name` or `dispositionParameters.filename` was selectable as the body even though `hasAttachments` already called it an attachment. Both functions now share one `isAttachmentPart` predicate. S4 was rewritten to state the rule.

@@ -180,8 +180,13 @@ export function joinTextBody(text, signatureText) {
  * is a caller bug and fails loudly; asking for no signature is always a no-op.
  */
 export async function applySignature({ dir, name, html, text }) {
-  if (name === undefined || name === null || name === "") {
+  if (name === undefined || name === null) {
     return { html, text, signature: null }
+  }
+  if (typeof name === "string" && name.trim() === "") {
+    throw new SignatureError(
+      "Invalid signature name: an empty value is not a signature name; omit the argument to use the default",
+    )
   }
   if (dir === undefined || dir === null || dir === "") {
     throw new SignatureError(

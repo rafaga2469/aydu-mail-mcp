@@ -57,15 +57,18 @@ function leafNodes(node, collected = []) {
   return collected
 }
 
+function isAttachmentPart(node) {
+  return (
+    node.disposition === "attachment" ||
+    Boolean(node.dispositionParameters?.filename) ||
+    Boolean(node.parameters?.name)
+  )
+}
+
 /** True when any leaf part is an attachment, by disposition or by filename. */
 export function hasAttachments(bodyStructure) {
   if (!bodyStructure) return false
-  return leafNodes(bodyStructure).some(
-    (node) =>
-      node.disposition === "attachment" ||
-      Boolean(node.dispositionParameters?.filename) ||
-      Boolean(node.parameters?.name),
-  )
+  return leafNodes(bodyStructure).some((node) => isAttachmentPart(node))
 }
 
 /**
@@ -79,6 +82,7 @@ export function findBodyPart(bodyStructure, format) {
   const wanted = format === "html" ? "text/html" : "text/plain"
   const node = leafNodes(bodyStructure).find(
     (candidate) =>
+      !isAttachmentPart(candidate) &&
       candidate.type === wanted &&
       (candidate.disposition === undefined ||
         candidate.disposition === null ||

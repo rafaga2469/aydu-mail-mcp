@@ -221,6 +221,38 @@ test("applySignature returns the same html when no signature is requested", asyn
   }
 })
 
+test("applySignature refuses an explicitly empty signature name even when configured", async () => {
+  const { dir, dispose } = await signatureDir({ "work.html": CARD })
+  try {
+    await assert.rejects(
+      () => applySignature({ dir, name: "", html: "<p>Hola</p>", text: "Hola" }),
+      {
+        name: "SignatureError",
+        message:
+          "Invalid signature name: an empty value is not a signature name; omit the argument to use the default",
+      },
+    )
+  } finally {
+    await dispose()
+  }
+})
+
+test("applySignature refuses a whitespace-only signature name", async () => {
+  const { dir, dispose } = await signatureDir({ "work.html": CARD })
+  try {
+    await assert.rejects(
+      () => applySignature({ dir, name: "   ", html: "<p>Hola</p>", text: "Hola" }),
+      {
+        name: "SignatureError",
+        message:
+          "Invalid signature name: an empty value is not a signature name; omit the argument to use the default",
+      },
+    )
+  } finally {
+    await dispose()
+  }
+})
+
 test("applySignature merges both parts of the chosen signature", async () => {
   const { dir, dispose } = await signatureDir({ "work.html": CARD })
   try {
@@ -233,6 +265,21 @@ test("applySignature merges both parts of the chosen signature", async () => {
     assert.equal(result.signature, "work")
     assert.equal(result.html, `<html><body><p>Hola</p>\n${CARD}</body></html>`)
     assert.equal(result.text, `Hola.\n\n-- \n${CARD_TEXT}`)
+  } finally {
+    await dispose()
+  }
+})
+
+test("applySignature is a no-op when the name is explicitly undefined or null", async () => {
+  const { dir, dispose } = await signatureDir({ "work.html": CARD })
+  try {
+    for (const name of [undefined, null]) {
+      assert.deepEqual(await applySignature({ dir, name, html: "<p>Hola</p>", text: "Hola" }), {
+        html: "<p>Hola</p>",
+        text: "Hola",
+        signature: null,
+      })
+    }
   } finally {
     await dispose()
   }
