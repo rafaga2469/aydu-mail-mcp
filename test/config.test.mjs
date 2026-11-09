@@ -66,3 +66,36 @@ test("a non-numeric port falls back to the default instead of NaN", () => {
   const config = readConfig({ ...base, AYDU_MAIL_PORT: "not-a-port" })
   assert.equal(config.imap.port, 993)
 })
+
+test("signatures are not configured until a directory is named", () => {
+  assert.deepEqual(readConfig(base).signatures, { dir: undefined, defaultName: undefined })
+  assert.deepEqual(readConfig({ ...base, AYDU_MAIL_SIGNATURES_DIR: "" }).signatures, {
+    dir: undefined,
+    defaultName: undefined,
+  })
+})
+
+test("reads the signature directory and the default signature", () => {
+  const config = readConfig({
+    ...base,
+    AYDU_MAIL_SIGNATURES_DIR: "/home/ana/.mail/signatures",
+    AYDU_MAIL_DEFAULT_SIGNATURE: "work",
+  })
+  assert.deepEqual(config.signatures, {
+    dir: "/home/ana/.mail/signatures",
+    defaultName: "work",
+  })
+  assert.deepEqual(config.describe().signatures, {
+    enabled: true,
+    dir: "/home/ana/.mail/signatures",
+    default: "work",
+  })
+})
+
+test("describe() reports signatures as disabled when unconfigured", () => {
+  assert.deepEqual(readConfig(base).describe().signatures, {
+    enabled: false,
+    dir: undefined,
+    default: undefined,
+  })
+})
