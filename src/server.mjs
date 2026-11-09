@@ -57,13 +57,23 @@ const BODY_SCHEMA = bodySchema(SIGNATURES)
 
 /** Merge the chosen (or default) signature into both parts before MIME building. */
 async function signBody({ html, text, signature }) {
-  if (!SIGNATURES) return { html, text, signature: null }
+  if (!SIGNATURES) return { html, text }
   return applySignature({
     dir: CONFIG.signatures.dir,
     name: signature ?? CONFIG.signatures.defaultName,
     html,
     text,
   })
+}
+
+/**
+ * Result payload for a send or save: the signature name appears only when a
+ * signature was actually applied, keeping the unconfigured output identical to
+ * the shape this server had before signature support.
+ */
+function withOptionalSignature(payload, signature) {
+  if (!signature) return payload
+  return { ...payload, signature }
 }
 
 function newImapClient() {
@@ -204,14 +214,16 @@ server.tool(
           {
             type: "text",
             text: JSON.stringify(
-              {
-                saved: true,
-                mailbox: draftsPath,
-                uid: result?.uid ?? null,
-                to,
-                subject,
-                signature: signed.signature,
-              },
+              withOptionalSignature(
+                {
+                  saved: true,
+                  mailbox: draftsPath,
+                  uid: result?.uid ?? null,
+                  to,
+                  subject,
+                },
+                signed.signature,
+              ),
               null,
               2,
             ),
@@ -491,7 +503,10 @@ if (sendEnabled(CONFIG)) {
             {
               type: "text",
               text: JSON.stringify(
-                { sent: true, messageId: info.messageId, accepted: info.accepted, to, subject, signature: signed.signature },
+                withOptionalSignature(
+                  { sent: true, messageId: info.messageId, accepted: info.accepted, to, subject },
+                  signed.signature,
+                ),
                 null,
                 2,
               ),

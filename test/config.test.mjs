@@ -92,10 +92,16 @@ test("reads the signature directory and the default signature", () => {
   })
 })
 
-test("describe() reports signatures as disabled when unconfigured", () => {
-  assert.deepEqual(readConfig(base).describe().signatures, {
-    enabled: false,
-    dir: undefined,
-    default: undefined,
+test("describe() omits signatures entirely when unconfigured", () => {
+  const described = readConfig(base).describe()
+  assert.equal("signatures" in described, false)
+  // The payload must match the exact pre-signature shape, nothing else.
+  assert.deepEqual(described, {
+    user: base.AYDU_MAIL_USER,
+    allowSend: false,
+    imap: { host: "imap.secureserver.net", port: 993, secure: true },
+    smtp: { host: "smtpout.secureserver.net", port: 465, secure: true },
   })
+  // A blank directory value counts as unset, not as an empty name.
+  assert.equal("signatures" in readConfig({ ...base, AYDU_MAIL_SIGNATURES_DIR: "" }).describe(), false)
 })

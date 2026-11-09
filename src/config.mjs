@@ -58,17 +58,24 @@ export function readConfig(env = process.env) {
   }
 
   // describe() is the only safe representation to log or return to a caller.
-  config.describe = () => ({
-    user: config.user,
-    allowSend: config.allowSend,
-    imap: { ...config.imap },
-    smtp: { ...config.smtp },
-    signatures: {
-      enabled: config.signatures.dir !== undefined,
-      dir: config.signatures.dir,
-      default: config.signatures.defaultName,
-    },
-  })
+  // The signatures block appears only when the directory was configured, so a
+  // server without the capability reports exactly the previous shape.
+  config.describe = () => {
+    const described = {
+      user: config.user,
+      allowSend: config.allowSend,
+      imap: { ...config.imap },
+      smtp: { ...config.smtp },
+    }
+    if (config.signatures.dir !== undefined) {
+      described.signatures = {
+        enabled: true,
+        dir: config.signatures.dir,
+        default: config.signatures.defaultName,
+      }
+    }
+    return described
+  }
 
   return config
 }

@@ -46,3 +46,5 @@ Branch: `feat/signatures-and-read-tools`.
 **L4** — Delivery slices: commit `0bdfb74` holds `src/signatures.mjs`, `src/config.mjs` and their tests; commit `e9fca48` holds the `server.mjs` wiring and the stdio boundary test; the documentation commit closes the feature. Review them in that order.
 
 **L5** — Review correction (findings `R1-empty-signature`, `R3-001`): `applySignature` treated an explicit empty name as "no signature", which let a caller bypass `AYDU_MAIL_DEFAULT_SIGNATURE` and still report success with `signature: null`. Only omission now means no signature; an empty or whitespace-only name is rejected. S2 was rewritten to state the rule.
+
+**L6** — Second-round review correction (findings `R3-002`, `R3-001`): `describe()` and the `save_draft`/`send_email` results exposed the new capability on the unconfigured paths, changing the output of a baseline-valid call. Both are now conditional, so a server without `AYDU_MAIL_SIGNATURES_DIR` reports exactly the payload shape it reported before signatures existed. The lesson: adding a capability must not move the baseline contract.

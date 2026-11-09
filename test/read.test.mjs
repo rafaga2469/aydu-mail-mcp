@@ -160,6 +160,43 @@ test("never picks a lone text part carrying a disposition filename", () => {
   assert.equal(hasAttachments(structure), true)
 })
 
+test("treats a text leaf inside an attachment container as attachment content", () => {
+  const structure = {
+    type: "multipart/mixed",
+    childNodes: [
+      {
+        type: "multipart/alternative",
+        disposition: "attachment",
+        dispositionParameters: { filename: "informe.txt" },
+        childNodes: [
+          { part: "1.1", type: "text/plain", size: 10 },
+          { part: "1.2", type: "text/html", size: 30 },
+        ],
+      },
+      { part: "2", type: "text/plain", size: 200 },
+    ],
+  }
+  assert.equal(findBodyPart(structure, "text"), "2")
+  assert.equal(findBodyPart(structure, "html"), undefined)
+  assert.equal(hasAttachments(structure), true)
+})
+
+test("treats a leaf under a container flagged only by its Content-Type name as an attachment", () => {
+  const structure = {
+    type: "multipart/mixed",
+    childNodes: [
+      {
+        type: "multipart/alternative",
+        parameters: { name: "informe.txt" },
+        childNodes: [{ part: "1.1", type: "text/plain", size: 10 }],
+      },
+      { part: "2", type: "text/plain", size: 200 },
+    ],
+  }
+  assert.equal(findBodyPart(structure, "text"), "2")
+  assert.equal(hasAttachments(structure), true)
+})
+
 test("uses the TEXT part name for a single-part message", () => {
   assert.equal(findBodyPart({ type: "text/plain" }, "text"), "TEXT")
 })

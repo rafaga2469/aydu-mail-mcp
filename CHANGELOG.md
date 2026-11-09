@@ -15,8 +15,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
-- `save_draft` and `send_email` report the applied signature in their result, `null` when none was applied.
-- `check_connection` reports the signature configuration alongside the connection facts.
+- `save_draft` and `send_email` report the applied signature in their result, and only when one was applied: with no signature configured the payload is unchanged.
+- `check_connection` reports the signature configuration alongside the connection facts, only when `AYDU_MAIL_SIGNATURES_DIR` is set.
 - Read paths open mailboxes with `EXAMINE` and fetch with `BODY.PEEK`, so reading never marks a message as read.
 
 ## [1.1.0] - 2026-11-09

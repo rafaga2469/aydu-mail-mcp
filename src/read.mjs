@@ -47,14 +47,22 @@ export function formatAddresses(addresses) {
     .join(", ")
 }
 
-function leafNodes(node, collected = []) {
-  if (!node) return collected
-  if (Array.isArray(node.childNodes) && node.childNodes.length > 0) {
-    for (const child of node.childNodes) leafNodes(child, collected)
-    return collected
+/**
+ * Depth-first walk that carries the attachment flag down the tree.
+ *
+ * A multipart container may itself be an attachment (its own disposition, or a
+ * filename in its Content-Type/Disposition parameters). Every leaf below such a
+ * container is attachment content too, so the flag is inherited by children and
+ * a body search can never descend into a flagged subtree.
+ */
+function walkNodes(node, inheritedAttachment = false, visit) {
+  if (!node) return
+  const effectiveAttachment = inheritedAttachment || isAttachmentPart(node)
+  const isLeaf = !(Array.isArray(node.childNodes) && node.childNodes.length > 0)
+  visit(node, { isLeaf, isAttachment: effectiveAttachment })
+  if (!isLeaf) {
+    for (const child of node.childNodes) walkNodes(child, effectiveAttachment, visit)
   }
-  collected.push(node)
-  return collected
 }
 
 function isAttachmentPart(node) {
@@ -65,10 +73,17 @@ function isAttachmentPart(node) {
   )
 }
 
-/** True when any leaf part is an attachment, by disposition or by filename. */
+/**
+ * True when any node in the tree — container or leaf — is an attachment, by
+ * disposition or by filename.
+ */
 export function hasAttachments(bodyStructure) {
   if (!bodyStructure) return false
-  return leafNodes(bodyStructure).some((node) => isAttachmentPart(node))
+  let found = false
+  walkNodes(bodyStructure, false, (_node, { isAttachment }) => {
+    if (isAttachment) found = true
+  })
+  return found
 }
 
 /**
@@ -80,16 +95,20 @@ export function hasAttachments(bodyStructure) {
  */
 export function findBodyPart(bodyStructure, format) {
   const wanted = format === "html" ? "text/html" : "text/plain"
-  const node = leafNodes(bodyStructure).find(
-    (candidate) =>
-      !isAttachmentPart(candidate) &&
-      candidate.type === wanted &&
-      (candidate.disposition === undefined ||
-        candidate.disposition === null ||
-        candidate.disposition === "inline"),
-  )
-  if (node === undefined) return undefined
-  return node.part ?? "TEXT"
+  let chosen
+  walkNodes(bodyStructure, false, (node, { isLeaf, isAttachment }) => {
+    if (chosen !== undefined) return
+    if (
+      isLeaf &&
+      !isAttachment &&
+      node.type === wanted &&
+      (node.disposition === undefined || node.disposition === null || node.disposition === "inline")
+    ) {
+      chosen = node
+    }
+  })
+  if (chosen === undefined) return undefined
+  return chosen.part ?? "TEXT"
 }
 
 function isoDate(value) {
