@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Launcher for the ay-du draft MCP server.
+#
+# Credentials never live in mcp.json: this wrapper pulls the mailbox password
+# from the system keyring (libsecret) at launch time and exports it only to the
+# child process. A password supplied through the environment wins, which keeps
+# the launcher usable from a shell or a systemd unit.
+set -euo pipefail
+
+KEYRING_SERVICE="aydu-mail"
+ACCOUNT="${AYDU_MAIL_USER:-hola@ay-du.com}"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ -z "${AYDU_MAIL_PASS:-}" ]]; then
+  AYDU_MAIL_PASS="$(secret-tool lookup service "$KEYRING_SERVICE" account "$ACCOUNT" 2>/dev/null || true)"
+fi
+
+if [[ -z "${AYDU_MAIL_PASS:-}" ]]; then
+  echo "aydu-mail-mcp: no password in the keyring for ${ACCOUNT}." >&2
+  echo "Store it once with:" >&2
+  echo "  secret-tool store --label='ay-du mailbox (${ACCOUNT})' service ${KEYRING_SERVICE} account ${ACCOUNT}" >&2
+  exit 1
+fi
+
+export AYDU_MAIL_USER="$ACCOUNT"
+export AYDU_MAIL_PASS
+
+exec node "${HERE}/../src/server.mjs"

@@ -1,0 +1,11 @@
+node_modules/
+*.log
+.env
+.env.*
+
+# Local credential leftovers
+*.pem
+*.key
+credentials.json
+
+.DS_Store
