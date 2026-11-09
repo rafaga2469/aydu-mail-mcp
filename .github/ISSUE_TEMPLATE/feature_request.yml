@@ -1,0 +1,39 @@
+name: Feature request
+description: Propose a capability or an improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This server is intentionally small. Proposals that grow the surface area
+        need a clear reason; see [CONTRIBUTING.md](../blob/master/CONTRIBUTING.md)
+        for what is out of scope by design.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you unable to do today? Describe the situation, not a solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Including doing nothing, or solving it in your own client.
+    validations:
+      required: false
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This does not make drafting able to deliver mail implicitly.
+          required: true
+        - label: This does not require multiple mailboxes in one process.
+          required: false

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 import { createRequire } from "node:module"
 
 // nodemailer ships MailComposer as CommonJS. We borrow only the composer, never
@@ -26,7 +28,8 @@ function assertHeaderSafe(field, value) {
   }
 }
 
-function parseAddressList(field, value) {
+/** Validate and normalise a comma-separated address list. Exported so the send path reuses the same rules. */
+export function parseRecipients(field, value) {
   assertHeaderSafe(field, value)
   const addresses = value
     .split(",")
@@ -56,8 +59,8 @@ export async function buildDraftMime({ from, to, cc, subject, html, text }) {
   if (!SINGLE_ADDRESS.test(from.trim())) {
     throw new DraftInputError("from must be a single valid email address")
   }
-  const toList = parseAddressList("to", to)
-  const ccList = cc === undefined ? undefined : parseAddressList("cc", cc)
+  const toList = parseRecipients("to", to)
+  const ccList = cc === undefined ? undefined : parseRecipients("cc", cc)
   assertHeaderSafe("subject", subject)
 
   if (typeof text !== "string" || text.trim().length === 0) {

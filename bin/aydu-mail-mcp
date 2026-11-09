@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
 # Launcher for the ay-du draft MCP server.
 #
 # Credentials never live in mcp.json: this wrapper pulls the mailbox password
