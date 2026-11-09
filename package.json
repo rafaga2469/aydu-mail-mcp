@@ -1,6 +1,6 @@
 {
   "name": "aydu-mail-mcp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Minimal MCP server that saves HTML drafts into an IMAP Drafts folder. No send capability by design.",
   "type": "module",
   "private": true,
@@ -24,7 +24,7 @@
     "aydu-mail-mcp": "src/server.mjs"
   },
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test",
     "start": "node src/server.mjs"
   },
   "dependencies": {
