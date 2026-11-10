@@ -36,5 +36,6 @@ jobs:
           node --check src/mime.mjs
           node --check src/read.mjs
           node --check src/signatures.mjs
+          node --check src/tools.mjs
           node --check src/server.mjs
           bash -n bin/aydu-mail-mcp

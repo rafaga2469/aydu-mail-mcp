@@ -32,6 +32,16 @@ export function sendEnabled(config) {
   return config.allowSend === true
 }
 
+/**
+ * Delivering an existing draft is its own capability, not a variant of sending:
+ * `send_email` composes and delivers, this one can only deliver what already
+ * sits in Drafts where a human could have read it. Separate switches so the
+ * narrower power is never inherited from the wider one.
+ */
+export function sendDraftEnabled(config) {
+  return config.allowSendDraft === true
+}
+
 export function readConfig(env = process.env) {
   const user = env.AYDU_MAIL_USER
   const pass = env.AYDU_MAIL_PASS
@@ -40,6 +50,7 @@ export function readConfig(env = process.env) {
     user,
     pass,
     allowSend: asBool(env.AYDU_MAIL_ALLOW_SEND, false),
+    allowSendDraft: asBool(env.AYDU_MAIL_ALLOW_SEND_DRAFT, false),
     imap: {
       host: env.AYDU_MAIL_HOST || DEFAULT_IMAP_HOST,
       port: asPort(env.AYDU_MAIL_PORT, DEFAULT_IMAP_PORT),

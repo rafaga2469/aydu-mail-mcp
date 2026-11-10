@@ -14,7 +14,7 @@ import {
   shapeMessage,
   truncateBody,
 } from "./read.mjs"
-import { sendEnabled, redact } from "./config.mjs"
+import { sendEnabled, sendDraftEnabled, redact } from "./config.mjs"
 
 /**
  * aydu-mail MCP toolset.
@@ -446,6 +446,74 @@ export function createServer({ config, createImapClient, createTransport }) {
           }
         } catch (error) {
           return failure("Signatures unavailable", error)
+        }
+      },
+    )
+  }
+
+  // Delivering an existing draft is gated on its own switch, separate from the
+  // compose switch, so the narrower power is never inherited from the wider one.
+  if (sendDraftEnabled(config)) {
+    server.tool(
+      "send_draft",
+      "Deliver a stored draft from the account's Drafts folder over SMTP, by uid. It cannot compose: the " +
+        "message is sent exactly as stored, with recipient and subject taken from its headers. This is a " +
+        "delivery switch, not a review gate: save_draft is always available, so a draft the agent wrote itself " +
+        "is equally deliverable. The draft is not deleted after sending, so a repeated call delivers it twice.",
+      {
+        uid: z.number().int().describe("Uid of the draft inside the Drafts folder"),
+      },
+      async ({ uid }) => {
+        let client
+        let transport
+        try {
+          const draftUid = requireUid(uid)
+          client = createImapClient()
+          await client.connect()
+          const draftsPath = await resolveDraftsPath(client)
+          await client.mailboxOpen(draftsPath, { readOnly: true })
+
+          // source keeps the stored bytes untouched; the underlying library reads
+          // with BODY.PEEK, so this look does not clear the \\Draft flag.
+          const message = await client.fetchOne(String(draftUid), { source: true }, { uid: true })
+          if (!message?.source) {
+            return { isError: true, content: [{ type: "text", text: `Draft not found: ${draftUid}` }] }
+          }
+
+          transport = createTransport({
+            host: config.smtp.host,
+            port: config.smtp.port,
+            secure: config.smtp.secure,
+            auth: { user: config.user, pass: config.pass },
+          })
+
+          // The envelope comes from nodemailer reading the raw headers; nothing
+          // here re-parses or rebuilds the message.
+          const info = await transport.sendMail({ raw: message.source })
+
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  { sent: true, messageId: info.messageId, accepted: info.accepted, mailbox: draftsPath, uid: draftUid },
+                  null,
+                  2,
+                ),
+              },
+            ],
+          }
+        } catch (error) {
+          return failure("Draft not sent", error)
+        } finally {
+          if (transport) transport.close()
+          if (client) {
+            try {
+              await client.logout()
+            } catch {
+              // The send outcome is already decided; a failed logout is not actionable.
+            }
+          }
         }
       },
     )
