@@ -8,7 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
-- `send_draft` tool: delivers an existing message from the account's Drafts folder by UID, registered only when `AYDU_MAIL_ALLOW_SEND_DRAFT` is truthy. It cannot compose, it sends the stored bytes unchanged, and it leaves the draft in place.
+- `send_draft` tool: delivers a stored message from the account's Drafts folder by UID, registered only when `AYDU_MAIL_ALLOW_SEND_DRAFT` is truthy. It cannot compose, it sends the stored bytes unchanged, and it leaves the draft in place. Note that this is a delivery switch, not a review gate: `save_draft` is always registered, so a draft the agent wrote itself is equally deliverable once the switch is on.
 - `sendDraftEnabled` in `src/config.mjs`, a switch independent of `AYDU_MAIL_ALLOW_SEND` so the narrower capability is never inherited from the wider one.
 
 ### Changed

@@ -34,7 +34,7 @@ Drafts are the interesting case: a human reviews the message in their real mail 
 | `get_message` | always | One message: headers, text, or HTML |
 | `search_messages` | always | IMAP search across a mailbox |
 | `list_signatures` | **only when `AYDU_MAIL_SIGNATURES_DIR` is set** | Lists the configured local signatures by name |
-| `send_draft` | **only when `AYDU_MAIL_ALLOW_SEND_DRAFT` is truthy** | Delivers an existing draft by uid, exactly as stored |
+| `send_draft` | **only when `AYDU_MAIL_ALLOW_SEND_DRAFT` is truthy** | Delivers a stored draft by uid, exactly as stored |
 | `send_email` | **only when `AYDU_MAIL_ALLOW_SEND` is truthy** | Sends the same validated message over SMTP |
 
 Each opt-in tool is **not registered at all** when its variable is absent — it does not appear in `tools/list`, so a client cannot call it and an agent never sees it. This is a capability boundary, not a guard clause. `test/tools-list.test.mjs` asserts it over the real stdio protocol.
@@ -51,15 +51,17 @@ Without it, drafting is the only write path. Enable it when you actually want an
 
 ### Three ways out, in order of how much the agent can do alone
 
-| Path | Switch | What the agent controls |
-|---|---|---|
-| `save_draft` | always on | the whole message, but nothing leaves the building |
-| `send_draft` | `AYDU_MAIL_ALLOW_SEND_DRAFT` | nothing except which existing draft to deliver |
-| `send_email` | `AYDU_MAIL_ALLOW_SEND` | the whole message, and its delivery |
+| Path | Switch | What the tool accepts | What the agent can then reach |
+|---|---|---|---|
+| `save_draft` | always on | the whole message | it can write drafts, and deliver nothing |
+| `send_draft` | `AYDU_MAIL_ALLOW_SEND_DRAFT` | a uid only | it can deliver **anything already in Drafts** |
+| `send_email` | `AYDU_MAIL_ALLOW_SEND` | the whole message | it can compose and deliver in one step |
 
-`send_draft` is the middle rung, and the one that fits a review workflow. It takes a single uid and nothing else: no recipient, no subject, no body. The message is delivered exactly as it sits in Drafts, with the envelope read from its own headers, so whatever you edited in your mail client is what arrives.
+Read the middle row twice, because it is the one that misleads.
 
-Two consequences worth knowing before you enable it. The draft is **not** deleted or moved after sending, so calling it twice delivers twice. And the switches are independent: setting `AYDU_MAIL_ALLOW_SEND` does not register `send_draft`, and setting `AYDU_MAIL_ALLOW_SEND_DRAFT` does not register `send_email`.
+`send_draft` cannot compose: it takes a single uid, no recipient, no subject, no body, and delivers the stored bytes with the envelope read from their own headers. But `save_draft` is always registered, so a draft the agent wrote a moment ago is also "already in Drafts". **Enabling `AYDU_MAIL_ALLOW_SEND_DRAFT` is a delivery switch, not a review gate.** The human review happens because a human reviews, not because the tool prevents anything. If you need the agent to be structurally unable to deliver what it wrote, leave both delivery switches off and send from your client; that is the only configuration where the guarantee holds.
+
+Two further consequences before you enable it. The draft is **not** deleted or moved after sending, so calling it twice delivers twice. And the switches are independent: setting `AYDU_MAIL_ALLOW_SEND` does not register `send_draft`, and setting `AYDU_MAIL_ALLOW_SEND_DRAFT` does not register `send_email` — but the second combination still lets a message out, which is exactly the point above.
 
 ## Reading mail
 
@@ -136,7 +138,7 @@ Everything comes from the environment. Nothing is read from a config file.
 | `AYDU_MAIL_USER` | yes | — | Full mailbox address; used as IMAP/SMTP user and as `From` |
 | `AYDU_MAIL_PASS` | yes | — | Mailbox password or app password |
 | `AYDU_MAIL_ALLOW_SEND` | no | unset (**off**) | Set truthy (`true`, `1`, `yes`, `on`) to register `send_email` |
-| `AYDU_MAIL_ALLOW_SEND_DRAFT` | no | unset (**off**) | Set truthy to register `send_draft`, independent of the switch above |
+| `AYDU_MAIL_ALLOW_SEND_DRAFT` | no | unset (**off**) | Set truthy to register `send_draft`. This is a delivery switch: with it on, a draft the agent just wrote is deliverable too |
 | `AYDU_MAIL_SIGNATURES_DIR` | no | unset (**off**) | Directory of `<name>.html` signatures; setting it registers `list_signatures` |
 | `AYDU_MAIL_DEFAULT_SIGNATURE` | no | unset | Signature applied when a tool call omits `signature` |
 | `AYDU_MAIL_HOST` | no | `imap.secureserver.net` | IMAP host |

@@ -456,9 +456,10 @@ export function createServer({ config, createImapClient, createTransport }) {
   if (sendDraftEnabled(config)) {
     server.tool(
       "send_draft",
-      "Deliver an existing draft from the account's Drafts folder over SMTP, by uid. It cannot compose: the " +
-        "message is sent exactly as stored, with recipient and subject taken from its headers. The draft is " +
-        "not deleted after sending, so a repeated call would deliver it twice.",
+      "Deliver a stored draft from the account's Drafts folder over SMTP, by uid. It cannot compose: the " +
+        "message is sent exactly as stored, with recipient and subject taken from its headers. This is a " +
+        "delivery switch, not a review gate: save_draft is always available, so a draft the agent wrote itself " +
+        "is equally deliverable. The draft is not deleted after sending, so a repeated call delivers it twice.",
       {
         uid: z.number().int().describe("Uid of the draft inside the Drafts folder"),
       },
