@@ -12,6 +12,11 @@ const DEFAULT_SMTP_PORT = 465
 
 const TRUTHY = new Set(["true", "1", "yes", "on"])
 
+/** An unset or empty variable counts as absent, never as an empty value. */
+function asText(value) {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined
+}
+
 function asPort(value, fallback) {
   const parsed = Number(value)
   return Number.isInteger(parsed) && parsed > 0 && parsed <= 65535 ? parsed : fallback
@@ -45,15 +50,32 @@ export function readConfig(env = process.env) {
       port: asPort(env.AYDU_SMTP_PORT, DEFAULT_SMTP_PORT),
       secure: asBool(env.AYDU_SMTP_SECURE, true),
     },
+    // No directory means the capability is absent, not that it is guarded.
+    signatures: {
+      dir: asText(env.AYDU_MAIL_SIGNATURES_DIR),
+      defaultName: asText(env.AYDU_MAIL_DEFAULT_SIGNATURE),
+    },
   }
 
   // describe() is the only safe representation to log or return to a caller.
-  config.describe = () => ({
-    user: config.user,
-    allowSend: config.allowSend,
-    imap: { ...config.imap },
-    smtp: { ...config.smtp },
-  })
+  // The signatures block appears only when the directory was configured, so a
+  // server without the capability reports exactly the previous shape.
+  config.describe = () => {
+    const described = {
+      user: config.user,
+      allowSend: config.allowSend,
+      imap: { ...config.imap },
+      smtp: { ...config.smtp },
+    }
+    if (config.signatures.dir !== undefined) {
+      described.signatures = {
+        enabled: true,
+        dir: config.signatures.dir,
+        default: config.signatures.defaultName,
+      }
+    }
+    return described
+  }
 
   return config
 }

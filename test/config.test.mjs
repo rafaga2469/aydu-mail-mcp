@@ -66,3 +66,42 @@ test("a non-numeric port falls back to the default instead of NaN", () => {
   const config = readConfig({ ...base, AYDU_MAIL_PORT: "not-a-port" })
   assert.equal(config.imap.port, 993)
 })
+
+test("signatures are not configured until a directory is named", () => {
+  assert.deepEqual(readConfig(base).signatures, { dir: undefined, defaultName: undefined })
+  assert.deepEqual(readConfig({ ...base, AYDU_MAIL_SIGNATURES_DIR: "" }).signatures, {
+    dir: undefined,
+    defaultName: undefined,
+  })
+})
+
+test("reads the signature directory and the default signature", () => {
+  const config = readConfig({
+    ...base,
+    AYDU_MAIL_SIGNATURES_DIR: "/home/ana/.mail/signatures",
+    AYDU_MAIL_DEFAULT_SIGNATURE: "work",
+  })
+  assert.deepEqual(config.signatures, {
+    dir: "/home/ana/.mail/signatures",
+    defaultName: "work",
+  })
+  assert.deepEqual(config.describe().signatures, {
+    enabled: true,
+    dir: "/home/ana/.mail/signatures",
+    default: "work",
+  })
+})
+
+test("describe() omits signatures entirely when unconfigured", () => {
+  const described = readConfig(base).describe()
+  assert.equal("signatures" in described, false)
+  // The payload must match the exact pre-signature shape, nothing else.
+  assert.deepEqual(described, {
+    user: base.AYDU_MAIL_USER,
+    allowSend: false,
+    imap: { host: "imap.secureserver.net", port: 993, secure: true },
+    smtp: { host: "smtpout.secureserver.net", port: 465, secure: true },
+  })
+  // A blank directory value counts as unset, not as an empty name.
+  assert.equal("signatures" in readConfig({ ...base, AYDU_MAIL_SIGNATURES_DIR: "" }).describe(), false)
+})

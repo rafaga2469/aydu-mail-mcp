@@ -4,7 +4,20 @@ All notable changes to this project are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.0] - 2026-11-10
+
+### Added
+
+- `list_mailboxes`, `list_messages`, `get_message`, and `search_messages`: read-only tools registered in every configuration. Metadata and bodies are separate calls, `limit` is capped at 50, bodies are cut at 100000 bytes, and paging uses a UID cursor.
+- `list_signatures`, plus a `signature` argument on `save_draft` and `send_email`, backed by a directory of `<name>.html` files in `AYDU_MAIL_SIGNATURES_DIR` with optional `<name>.txt` companions. `AYDU_MAIL_DEFAULT_SIGNATURE` supplies a default.
+- `src/read.mjs` and `src/signatures.mjs`: pure shaping, resolution, and rendering, testable without a mail server.
+- `test/tools-list.test.mjs` and `test/read-tools.test.mjs`: assertions over the real stdio MCP protocol, including which tools a client can see in each configuration.
+
+### Changed
+
+- `save_draft` and `send_email` report the applied signature in their result, and only when one was applied: with no signature configured the payload is unchanged.
+- `check_connection` reports the signature configuration alongside the connection facts, only when `AYDU_MAIL_SIGNATURES_DIR` is set.
+- Read paths open mailboxes with `EXAMINE` and fetch with `BODY.PEEK`, so reading never marks a message as read.
 
 ## [1.1.0] - 2026-11-09
 
