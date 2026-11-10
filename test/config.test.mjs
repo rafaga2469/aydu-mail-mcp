@@ -2,7 +2,7 @@
 
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { readConfig, sendEnabled } from "../src/config.mjs"
+import { readConfig, sendDraftEnabled, sendEnabled } from "../src/config.mjs"
 
 const base = {
   AYDU_MAIL_USER: "hola@example.com",
@@ -104,4 +104,22 @@ test("describe() omits signatures entirely when unconfigured", () => {
   })
   // A blank directory value counts as unset, not as an empty name.
   assert.equal("signatures" in readConfig({ ...base, AYDU_MAIL_SIGNATURES_DIR: "" }).describe(), false)
+})
+
+test("delivering a draft is off unless explicitly enabled", () => {
+  assert.equal(sendDraftEnabled(readConfig(base)), false)
+  assert.equal(sendDraftEnabled(readConfig({ ...base, AYDU_MAIL_ALLOW_SEND_DRAFT: "false" })), false)
+  assert.equal(sendDraftEnabled(readConfig({ ...base, AYDU_MAIL_ALLOW_SEND_DRAFT: "" })), false)
+})
+
+test("delivering a draft does not inherit the compose switch", () => {
+  // The narrower capability must never be turned on by the wider one.
+  assert.equal(sendDraftEnabled(readConfig({ ...base, AYDU_MAIL_ALLOW_SEND: "true" })), false)
+  for (const value of ["true", "1", "yes", "on"]) {
+    assert.equal(
+      sendDraftEnabled(readConfig({ ...base, AYDU_MAIL_ALLOW_SEND_DRAFT: value })),
+      true,
+      value,
+    )
+  }
 })
