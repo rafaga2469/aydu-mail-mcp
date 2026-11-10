@@ -184,7 +184,7 @@ function failure(prefix, error) {
   return { isError: true, content: [{ type: "text", text: `${kind}: ${redact(error?.message ?? error, CONFIG)}` }] }
 }
 
-const server = new McpServer({ name: "aydu-mail", version: "1.1.0" })
+const server = new McpServer({ name: "aydu-mail", version: "1.2.0" })
 
 server.tool(
   "save_draft",
